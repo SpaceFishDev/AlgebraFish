@@ -11,7 +11,7 @@ int main(int argc, char* argv)
       return 0;
     }
     Parser* parser = InitializeParser(str);
-    Node* n = Parse(parser);
+    Node* n = Parse(parser, NULL, 0);
     Evaluator* evaluator = InitializeEvaluator(n);
     PrintTree(n, 0, 1);
     float end = Evaluate(evaluator);

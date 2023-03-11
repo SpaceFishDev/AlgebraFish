@@ -1,5 +1,5 @@
 src = $(wildcard src/*.c)
-out = algebrafish.exe
+out = alfish.exe
 cflags = -O3 -Isrc/
 
 all: $(src)

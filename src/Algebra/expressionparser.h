@@ -41,7 +41,7 @@ Node* InitializeRootNode()
 
 void addChild(Node* n, Node* src)
 {
-  realloc(n->Children, sizeof(Node*) * n->NChild + 1);
+  n->Children = realloc(n->Children, sizeof(Node*) * n->NChild + 1);
   n->Children[n->NChild] = src;
   ++n->NChild;
 }
@@ -139,10 +139,10 @@ Token* Match(Parser* parser, int type)
 Node* ParsePrimaryExpression(Parser* parser);
 Node* ParseTerm(Parser* parser);
 
-Node* Parse(Parser* parser, Node* root)
+Node* Parse(Parser* parser, Node* root, int debug)
 {
   Node* n = ParseTerm(parser);
-  addChild();
+  return n;
 }
 Node* ParseTerm(Parser* parser);
 Node* ParseFactor(Parser* parser);
@@ -155,7 +155,6 @@ Node* ParseTerm(Parser* parser)
   if(CurrentToken->Text[0] == '\n')
   {
     ++parser->Position;
-    return Parse(parser);
   }
   Node* left = ParseFactor(parser);
   ++parser->Position;
@@ -186,11 +185,16 @@ Node* ParseFactor(Parser* parser)
   Node* left = ParsePrimaryExpression(parser);
   if(left->Type == VARIABLE_NODE && parser->Tokens[parser->Position + 1]->Text[0] != '=')
   {
-    // --parser->Position;
     return left;
   }
   ++parser->Position;
-  if(parser->Position < parser->NToken && CurrentToken->Text[0 ]!= '*' && CurrentToken->Text[0] != '/' )
+  if
+  (
+    parser->Position < parser->NToken 
+    && CurrentToken->Text[0 ]!= '*' 
+    && CurrentToken->Text[0] != '/' 
+    && CurrentToken->Text[0] != '^'  
+  )
   {
     --parser->Position;
     return left;
@@ -201,7 +205,7 @@ Node* ParseFactor(Parser* parser)
   return left;
 }
 
-Node* ParsePrimaryExpression(Parser* parser)
+Node*   ParsePrimaryExpression(Parser* parser)
 {
   if(CurrentToken->Type == VARIABLE)
   {
@@ -253,19 +257,18 @@ typedef struct Variable
   Node* Value;
 } Variable;
 
+Variable* Variables;
+int NVar;
 typedef struct Evaluator
 {
   Node* root;
-  Variable* Variables;
-  int NVar;
 } Evaluator;
 
 void AddVar(Evaluator** ev, Variable v)
 {
-    (*ev)->NVar++;
-    (*ev)->Variables = realloc((*ev)->Variables, (*ev)->NVar * sizeof(Variable));
-
-    (*ev)->Variables[(*ev)->NVar - 1] = v;
+    NVar++;
+    Variables = realloc(Variables, NVar * sizeof(Variable));
+    Variables[NVar - 1] = v;
 }
 
 Evaluator* InitializeEvaluator(Node* root)
@@ -289,11 +292,11 @@ volatile double EvaluateExpression(Node* root, Evaluator* evaluator)
   if(root->Type == VARIABLE_NODE)
   {
     Variable v = (Variable){0};
-    for(int i = 0; i != evaluator->NVar; ++i)
+    for(int i = 0; i != NVar; ++i)
     {
-      if(root->nodeToken->Text == evaluator->Variables[i].name)
+      if(!strcmp(root->nodeToken->Text , Variables[i].name))
       {
-        v = evaluator->Variables[i];
+        v = Variables[i];
         break;
       }
     }
@@ -306,6 +309,14 @@ volatile double EvaluateExpression(Node* root, Evaluator* evaluator)
     if(root->nodeToken->Text[0] == '=')
     {
       Variable v = (Variable){root->Children[0]->nodeToken->Text, root->Children[1]};
+      for(int i = 0; i != NVar; ++i)
+      {
+        if(!strcmp(Variables[i].name,v.name))
+        {
+          Variables[i].Value = root->Children[1];
+          return EvaluateExpression(root->Children[0], evaluator);
+        }
+      }
       AddVar(&evaluator, v);
       return EvaluateExpression(root->Children[0], evaluator);
     }
@@ -320,6 +331,8 @@ volatile double EvaluateExpression(Node* root, Evaluator* evaluator)
       return left / right;
     if(root->nodeToken->Text[0] == '*')
       return left * right;
+    if(root->nodeToken->Text[0] == '^')
+      return pow(left, right);
   } 
   if(root->Type == PARENEXPR_NODE)
   {

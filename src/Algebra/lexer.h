@@ -133,6 +133,7 @@ Token* Lex(Lexer* lexer)
         return LexSingleChar(lexer, BRACKET);
       }
       case '\n':
+      case '^':
       case '-':
       case '/':
       case '*':
